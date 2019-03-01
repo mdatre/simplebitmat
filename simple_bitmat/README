@@ -1,0 +1,188 @@
+---------------------------------------------------------------------
+Common usage:
+./bitmat -l [y/n] -Q [y/n] -f configfile -q queryfile -o resultfile
+
+Description:
+  -l : Whether you want to create indexes in the BitMat format
+  -Q : Whether you want to run a query. If this option is "n" then
+       "-q" and "-o" options are ignored
+  -f : Configfile. Should be formed as given in sample
+  -q : Queryfile. Should be formed as given in sample
+  -r : Path to the results file
+
+---------------------------------------------------------------------
+
+Compiling:
+To compile the sources, follow two simple commands.
+
+$ cd src
+$ make
+
+---------------------------------------------------------------------
+
+INDEX BUILDING:
+=============
+
+Current BitMat code does not have way of parsing the RDF data. We use
+an external script for that purpose. The sample script is included
+in the "scripts" folder.
+
+The way of parsing the data and allocating unique IDs is same as
+described in http://www.cs.rpi.edu/~atrem/papers/www10_medha.pdf in
+Section 3.
+
+After the ID allocation is done, we transform all the triples into
+their ID representation. The original (S, P, O) triple is represented as
+"SID:PID:OID". A sample file for LUBM ata is given in the "scripts"
+folder.
+
+This file is then sorted in 4 different ways as:
+
+sort -u -n -t: -k2 -k1 -k3 encoded_triple_file > encoded_triple_file_spo //sorted in order of PSO
+sort -u -n -t: -k2 -k3 -k1 encoded_triple_file | awk -F: '{print $3":"$2":"$1}' > encoded_triple_file_ops //sorted in order of POS
+sort -u -n -t: -k1 -k2 -k3 encoded_triple_file | awk -F: '{print $2":"$1":"$3}' > encoded_triple_file_pso //sorted in order of SPO
+sort -u -n -t: -k3 -k2 -k1 encoded_triple_file | awk -F: '{print $2":"$3":"$1}' > encoded_triple_file_pos //sorted in order of POS
+
+This sorting gives us 4 different files where triples in their ID form
+are sorted on 4 different orders viz. PSO, POS, SPO, and OPS (please note
+the slight different interpretation of the suffixes than standard norm).
+
+We give paths to these 4 spo, ops, pso, and pos files in the configfile
+(refer to the sample config file in the "scripts" folder).
+
+----------------------------------------------------------------------
+
+CONFIG FILE:
+============
+
+Some important fields of cofig file:
+
+1) TABLE_COL_BYTES: This field defines the number of bytes used to store
+the offset of each BitMat inside the large file in which all BitMats are
+stored one after another. This field is typically keps as "5" bytes to
+allow for very large datasets. But for smaller datasets where the size
+of the large metafile holding all the BitMats won't be greater than 4GB,
+TABLE_COL_BYTES can be "4".
+
+2) NUM_COMMON_SO: This field gives the number of common subject and
+object URIs in the RDF dataset.
+
+----------------------------------------------------------------------
+
+QUERY PROCESSING:
+=================
+
+@Julian: You may ignore this part and jump to "RUNNING SIMPLE BITMAT"
+
+BitMat interface currently does not support a SPARQL parser. Each join
+query is represented as follows:
+
+1) Each join variable is assigned a negative integer ID.
+2) Each fixed position in the triple pattern is replaced by the
+respective string's ID (as was allocated during data loading step).
+3) Each non-distinguished variable (non-join variable) is assigned
+number "0".
+4) Each triple pattern is then represented as, e.g., "-1:23:0" where
+"-1" represents a join variable. "23" is the ID assigned to the
+predicate in the original triple pattern and "0" is represents a
+non-join variable in the query.
+A sample query file is given in the scripts folder.
+=============================================
+How to import BitMat code into Eclise CDT:
+
+1. Use Eclipse Juno eclipse-cpp-juno-SR2-linux-gtk-x86_64.tar.gz
+2. File -> Import -> C/C++ -> Existing code as Makefile Project
+   Select GNU Autotools Toolchain under "Toolchain for Indexer Settings"
+3. Select BitMat source folder (in my case $HOME/bitmatsrc/src/src_bmlist).
+4. Finish
+5. File -> Import -> C/C++ -> C/C++ Project Settings. Select "project.xml"
+   in src_bmlist folder. Finish.
+6. Right click on project BitMat -> Index -> Rebuild Index.
+7. Clean the project and rebuild.
+Voila... done.. with no indexer/parser errors!
+
+----------------------------------------------------------------------
+RUNNING SIMPLE BITMAT
+======================
+
+Simple BitMat only exercises fold and unfold functions without doing
+full blown SPARQL query execution. Brief overview of fold/unfold
+
+1) Fold - given a compressed BitMat (each row compressed with hybrid
+	compression scheme of either RLE or simply storing bit positions),
+	fold takes a compressed BitMat, the dimension which must be compressed
+	(row or column), and does bitwise OR on the other dimension --
+	if the dimension given is ROW then we do bitwise OR of all the compressed
+	rows to generate a "bit-array" representative of all the rows -- an "n"th
+	bit set to 1 in this array means there is at least one row with a 1 bit
+	in n^th column. The bitwise OR dimension as COLUMN, it (conceptually)
+	does a bitwise OR on all the columns vertically (conceptually) and
+	generates a bit-array in which an n^th bit set to 1 means that there
+	is at least one column with n^th row bit having 1 bit.
+
+	Since the BitMat is compressed row-wise, the column boundaries are not
+	well defined, so in impementation a fold with ROW dimension just takes
+	an empty bitarray say "foldarr" and recursively uncompresses each row 
+	on it by doing bitwise OR, thus
+
+	fold(bitmat, dim, foldarr) {
+		reset(barr);
+		if (dim == ROW) {
+			for each row "r" in bitmat {
+				foldarr = foldarr OR uncompress(r);
+			}
+		} else if (dim == COLUMN) {
+			for each row "r" in bitmat {
+				if (r exists, and has at least one bit) {
+					foldarr[(r-1) / 8] |= (0x80 >> ((r-1)%8)); //bitshift and OR
+				}
+			}
+		}
+	}
+
+	This process is equivalent to doing a unique value projection op relational
+	table (ref WWW 2010 paper syntactic description).
+
+2) Unfold - unfold is conceptually reverse op of fold. Given a maskarr, now
+	we want to unroll this maskarr on entire bitmat, i.e., if n^th bit in 
+	maskarr is set to 0, and we need to unfold maskarr on ROW dimension, 
+	we remove the compressed n^th row from bitmat.
+	Since the bitmat is rowwise compressed, the unfolding on column dimension
+	is not straight-forward as above. For that we need to evaluate
+	each compressed row, and unset the n^th bit in it if it is set. This
+	often changes the compression, most times improving compression ratio
+	for sparse rows. Rarely increasing the compression cost in case
+	if the row originally was densely packed with many consecutive 1s.
+
+	unfold(bitmat, dim, maskarr) {
+		if (dim == ROW) {
+			for each row "r" in bitmat {
+				if (r^th bit in maskarr is 0) {
+					remove r;
+				}
+			}
+		} else if (dim == COLUMN) {
+			for each row "r" in bitmat {
+				/*
+				 * Inside this is the dragon of logic to examine each
+				 * bit in row and unset it if required.
+				 */
+				rowwise_column_unfold(r, maskarr, maskarr_size);
+			}
+		}
+	}
+
+In the current code these two simple_fold and simple_unfold functions
+have been rewritten with threads being created inside them, and inside threads
+doing rowwise ops. But as can be seen each row's ops are independent of 
+each other, and thus conducive for massive parallel processing benefits.
+
+Further, multiple such BitMats exists for a given query, whose fold/unfolds
+can be invoked in parallel -- so essential millions of fold and unfold in parallel
+across k bitmats.
+
+The whole semi-join style query processing flow can also be represented as a dependency
+graph of fold/unfold ops, and thus can be ensured that very little GPU time goes
+waste. This will benefit graph queries with massive exploration requirements.
+Not so much benefit for highly selective queries that access only small amount of
+data. There CPUs might suffice for the purpose.
