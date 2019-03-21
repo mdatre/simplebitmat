@@ -3827,6 +3827,8 @@ void load_data_vertically(char *file, vector<struct twople> &twoplelist, BitMat 
 
 		if (tmpfile != NULL) {
 			tmpdump = fopen(tmpfile, "wb");
+			
+			assert(tmpdump != NULL);
 
 			if (buf_tmp != NULL) {
 				free(buf_tmp); buf_tmp = NULL;
