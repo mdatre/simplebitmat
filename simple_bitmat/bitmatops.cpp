@@ -1076,7 +1076,7 @@ FILE* map_to_row_wo_dgap_vertical(BitMat *bitmat, unsigned int spos, unsigned in
 				unsigned int sprev, bool cflag, bool start, bool ondisk, bool listload, FILE *tmpdump,
 				bool changebm)
 {
-	assert(BM_ROW_SIZE <= sizeof (unsigned short));
+//	assert(BM_ROW_SIZE <= sizeof (unsigned short));
 #if USE_MORE_BYTES
 	unsigned long bitset = 0, later_0 = 0, ini_0 = 0, mid_0 = 0;
 #else	
