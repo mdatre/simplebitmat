@@ -105,17 +105,19 @@ int main(int args, char **argv)
 			" bm_row_size " << bm_row_size << " BM_ROW_SIZE " << BM_ROW_SIZE << endl;
 		exit(-1);
 	}
+	
+	if (loaddata) {
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	vector<struct twople> triplelist;
+		vector<struct twople> triplelist;
 
-	cout << "*********** BUILDING BITMATS ***********" << endl;
-	BitMat bmorig_spo;
-	init_bitmat(&bmorig_spo, gnum_subs, gnum_preds, gnum_objs, gnum_comm_so, SPO_BITMAT);
-	cout << "Building SPO bitmat" << endl;
-	load_data_vertically((char *)config[string("RAWDATAFILE_SPO")].c_str(), triplelist, &bmorig_spo, (char *)config[string("BITMATDUMPFILE_SPO")].c_str(), true, false, true, (char *)config[string("TMP_STORAGE")].c_str());
-	bmorig_spo.freebm();
+		cout << "*********** BUILDING BITMATS ***********" << endl;
+		BitMat bmorig_spo;
+		init_bitmat(&bmorig_spo, gnum_subs, gnum_preds, gnum_objs, gnum_comm_so, SPO_BITMAT);
+		cout << "Building SPO bitmat" << endl;
+		load_data_vertically((char *)config[string("RAWDATAFILE_SPO")].c_str(), triplelist, &bmorig_spo, (char *)config[string("BITMATDUMPFILE_SPO")].c_str(), true, false, true, (char *)config[string("TMP_STORAGE")].c_str());
+		bmorig_spo.freebm();
 //		clear_rows(&bmorig_spo, true, true, false);
 
 //		BitMat bmorig_ops;
@@ -140,106 +142,111 @@ int main(int args, char **argv)
 ////		clear_rows(&bmorig_pos, true, true, false);
 
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
 
-	printf("Time for building BitMats: %f\n", curr_time);
+		printf("Time for building BitMats: %f\n", curr_time);
+	}
 
 	/////////////////////////////////////////////////////////////
 
 ///////////////////
 // BitMat ops
 ///////////////////
+	
+	if (querydata) {
+		BitMat bmorig_spo;
+		init_bitmat(&bmorig_spo, gnum_subs, gnum_preds, gnum_objs, gnum_comm_so, SPO_BITMAT);
+	#if MMAPFILES
+		mmap_all_files();
+	#endif
 
-#if MMAPFILES
-	mmap_all_files();
-#endif
+		/*
+		 * For Preetam: bmnum is the edge-label, which in turn decides
+		 * which adjancency matrix (BitMat) to use. You can change this number,
+		 * and appropriate BitMat will be picked up.
+		 */
+		unsigned int bmnum = 121;
+		bmorig_spo.reset();
 
-	/*
-	 * For Preetam: bmnum is the edge-label, which in turn decides
-	 * which adjancency matrix (BitMat) to use. You can change this number,
-	 * and appropriate BitMat will be picked up.
-	 */
-	unsigned int bmnum = 121;
-	bmorig_spo.reset();
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		unsigned int ret = wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
 
-	unsigned int ret = wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for loading bitmat %d: %f\n", bmnum, curr_time);
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
-	printf("Time for loading bitmat %d: %f\n", bmnum, curr_time);
+		unsigned int foldarr_size = bmorig_spo.row_bytes;
+		unsigned char *foldarr = (unsigned char *) malloc (foldarr_size);
 
-	unsigned int foldarr_size = bmorig_spo.row_bytes;
-	unsigned char *foldarr = (unsigned char *) malloc (foldarr_size);
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		simple_fold(&bmorig_spo, ROW, foldarr, foldarr_size);
 
-	simple_fold(&bmorig_spo, ROW, foldarr, foldarr_size);
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for folding (ROW): %f\n", curr_time);
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
-	printf("Time for folding (ROW): %f\n", curr_time);
+		unsigned int foldarr2_size = bmorig_spo.column_bytes;
+		unsigned char *foldarr2 = (unsigned char *) malloc (foldarr2_size);
 
-	unsigned int foldarr2_size = bmorig_spo.column_bytes;
-	unsigned char *foldarr2 = (unsigned char *) malloc (foldarr2_size);
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		simple_fold(&bmorig_spo, COLUMN, foldarr2, foldarr2_size);
 
-	simple_fold(&bmorig_spo, COLUMN, foldarr2, foldarr2_size);
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for folding (COLUMN): %f\n", curr_time);
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
-	printf("Time for folding (COLUMN): %f\n", curr_time);
+		/*
+		 * For Preetam: write some code to generate a maskarray.
+		 * Right now you can do it randomly.
+		 */
 
-	/*
-	 * For Preetam: write some code to generate a maskarray.
-	 * Right now you can do it randomly.
-	 */
+		unsigned char *maskarr; //TODO: populate this.
+		unsigned int maskarr_size = 0; //TODO: populate this.
 
-	unsigned char *maskarr; //TODO: populate this.
-	unsigned int maskarr_size = 0; //TODO: populate this.
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		simple_unfold(&bmorig_spo, maskarr, maskarr_size, ROW);
 
-	simple_unfold(&bmorig_spo, maskarr, maskarr_size, ROW);
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for unfolding (ROW): %f\n", curr_time);
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
-	printf("Time for unfolding (ROW): %f\n", curr_time);
+		/*
+		 * For Preetam: You may want to reset the BitMat before doing unfold
+		 * on another dimension.
+		 */
 
-	/*
-	 * For Preetam: You may want to reset the BitMat before doing unfold
-	 * on another dimension.
-	 */
+		bmorig_spo.reset();
+		wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
 
-	bmorig_spo.reset();
-	wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
+		gettimeofday(&start_time, (struct timezone *)0);
 
-	gettimeofday(&start_time, (struct timezone *)0);
+		simple_unfold(&bmorig_spo, maskarr, maskarr_size, COLUMN);
 
-	simple_unfold(&bmorig_spo, maskarr, maskarr_size, COLUMN);
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for unfolding (COLUMN): %f\n", curr_time);
 
-	gettimeofday(&stop_time, (struct timezone *)0);
-	en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-	st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-	curr_time = en-st;
-	printf("Time for unfolding (COLUMN): %f\n", curr_time);
-
-#if MMAPFILES
+	#if MMAPFILES
 		munmap_all_files();
-#endif
+	#endif
+	}
 
 	return 0;
 
