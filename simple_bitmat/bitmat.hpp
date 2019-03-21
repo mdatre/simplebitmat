@@ -83,7 +83,7 @@ using namespace std;
 #define BMUPTODATE			2005 //both row, col vec uptodate and unfolded, except num-triples
 #define ALLUPTODATE			2006 //everything uptodate
 
-#define BM_ROW_SIZE			2 //sizeof(unsigned char)
+#define BM_ROW_SIZE			4 //sizeof(unsigned char)
 #define ROW_SIZE_BYTES 		4
 #define GAP_SIZE_BYTES		4
 #define TOTAL_ROWSIZE(c)	(((c-1)*GAP_SIZE_BYTES)+1)
