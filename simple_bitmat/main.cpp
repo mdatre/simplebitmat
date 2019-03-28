@@ -36,6 +36,7 @@ int main(int args, char **argv)
 	double curr_time;
 	double st, en, prune, init;
 	int c = 0;
+	unsigned int bmnum = 0;
 	char qfile[25][124], outfile[25][124];
 	bool loaddata = false, querydata = true, pruning = false;
 	char *dump_file = NULL;
@@ -45,13 +46,13 @@ int main(int args, char **argv)
 	if (args < 11) {
 		printf("Copyright 2011, 2012 Medha Atre\n\n");
 //		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -t resultsettype(b: bitvec, h:hashmap)\n");
-		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -d dump_file\n\n");
+		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -b bitmatnum\n\n");
 		exit (-1);
 	}
 
 	printf("Copyright 2011, 2012 Medha Atre\n\n");
 
-	while((c = getopt(args, argv, "t:l:Q:f:q:o:d:")) != -1) {
+	while((c = getopt(args, argv, "t:l:Q:f:q:o:b:")) != -1) {
 		switch (c) {
 			case 'f':
 				parse_config_file(optarg);
@@ -84,9 +85,12 @@ int main(int args, char **argv)
 					assert(0);
 				assert(resbitvec == RESBITVEC);
 				break;
-			case 'd':
-				dump_file = (char *)malloc (strlen(optarg));
-				strcpy(dump_file, optarg);
+//			case 'd':
+//				dump_file = (char *)malloc (strlen(optarg));
+//				strcpy(dump_file, optarg);
+//				break;
+			case 'b':
+				bmnum = strtoul(optarg, NULL, 10);
 				break;
 			default:
 				printf("Usage: bitmat -f config-file -q query-file -o res-output-file\n");
@@ -212,36 +216,36 @@ int main(int args, char **argv)
 		 * Right now you can do it randomly.
 		 */
 
-		unsigned char *maskarr; //TODO: populate this.
-		unsigned int maskarr_size = 0; //TODO: populate this.
-
-		gettimeofday(&start_time, (struct timezone *)0);
-
-		simple_unfold(&bmorig_spo, maskarr, maskarr_size, ROW);
-
-		gettimeofday(&stop_time, (struct timezone *)0);
-		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-		curr_time = en-st;
-		printf("Time for unfolding (ROW): %f\n", curr_time);
+//		unsigned char *maskarr; //TODO: populate this.
+//		unsigned int maskarr_size = 0; //TODO: populate this.
+//
+//		gettimeofday(&start_time, (struct timezone *)0);
+//
+//		simple_unfold(&bmorig_spo, maskarr, maskarr_size, ROW);
+//
+//		gettimeofday(&stop_time, (struct timezone *)0);
+//		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+//		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+//		curr_time = en-st;
+//		printf("Time for unfolding (ROW): %f\n", curr_time);
 
 		/*
 		 * For Preetam: You may want to reset the BitMat before doing unfold
 		 * on another dimension.
 		 */
 
-		bmorig_spo.reset();
-		wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
-
-		gettimeofday(&start_time, (struct timezone *)0);
-
-		simple_unfold(&bmorig_spo, maskarr, maskarr_size, COLUMN);
-
-		gettimeofday(&stop_time, (struct timezone *)0);
-		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-		curr_time = en-st;
-		printf("Time for unfolding (COLUMN): %f\n", curr_time);
+//		bmorig_spo.reset();
+//		wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
+//
+//		gettimeofday(&start_time, (struct timezone *)0);
+//
+//		simple_unfold(&bmorig_spo, maskarr, maskarr_size, COLUMN);
+//
+//		gettimeofday(&stop_time, (struct timezone *)0);
+//		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+//		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+//		curr_time = en-st;
+//		printf("Time for unfolding (COLUMN): %f\n", curr_time);
 
 	#if MMAPFILES
 		munmap_all_files();
