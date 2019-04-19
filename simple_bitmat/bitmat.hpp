@@ -239,6 +239,53 @@ typedef struct BitMat {
 		num_triples = 0;
 	}
 
+	void clone_to(BitMat *second)
+	{
+		second->num_rows = num_rows;
+		second->num_totalBMs = num_totalBMs;
+		second->num_columns = num_columns;
+		second->num_comm_so = num_comm_so;
+		second->dimension = dimension;
+		second->row_bytes = row_bytes;
+		second->totalBMs_bytes = totalBMs_bytes;
+		second->column_bytes = column_bytes;
+		second->common_so_bytes = common_so_bytes;
+
+		if (second->rowfold != NULL) free(second->rowfold);
+		if (second->colfold != NULL) free(second->colfold);
+
+		second->rowfold =  (unsigned char *) malloc(row_bytes * sizeof(unsigned char));
+		memcpy(second->rowfold, rowfold, row_bytes);
+		second->colfold = (unsigned char *) malloc(column_bytes * sizeof(unsigned char));
+		memcpy(second->colfold, colfold, column_bytes);
+		second->num_triples = num_triples;
+
+		for (std::list<struct row>::iterator it = bm.begin(); it != bm.end(); it++){
+			unsigned char *old_data = (*it).data;
+
+			unsigned int rw_size = 0;
+			memcpy(&rw_size, old_data, BM_ROW_SIZE);
+
+			unsigned char *data = (unsigned char *) malloc(rw_size);
+			memcpy(data, old_data, rw_size);
+			struct row r = {(*it).rowid, data};
+
+			second->bm.push_back(r);
+		}
+		for (std::vector<struct row>::iterator it = vbm.begin(); it != vbm.end(); it++){
+			unsigned char *old_data = (*it).data;
+
+			unsigned int rw_size = 0;
+			memcpy(&rw_size, old_data, BM_ROW_SIZE);
+
+			unsigned char *data = (unsigned char *) malloc(rw_size);
+			memcpy(data, old_data, rw_size);
+			struct row r = {(*it).rowid, data};
+
+			second->vbm.push_back(r);
+		}
+	}
+
 	BitMat()
 	{
 		num_rows = num_totalBMs = num_columns = num_comm_so = num_triples = 0;
@@ -674,6 +721,8 @@ bool add_row2(BitMat *bitmat, unsigned int dimension, unsigned int bmnum, unsign
 void read_bitmat_triplecnt(BitMat *bitmat, unsigned int dimension, unsigned int bmnum);
 
 bool parse_query_new(char *fname);
+
+unsigned char * get_maskbitarr(BitMat *bitmat, int dim, unsigned int *size);
 
 #endif
 

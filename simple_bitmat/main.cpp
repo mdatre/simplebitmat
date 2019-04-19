@@ -211,41 +211,42 @@ int main(int args, char **argv)
 		curr_time = en-st;
 		printf("Time for folding (COLUMN): %f\n", curr_time);
 
-		/*
-		 * For Preetam: write some code to generate a maskarray.
-		 * Right now you can do it randomly.
-		 */
 
-//		unsigned char *maskarr; //TODO: populate this.
-//		unsigned int maskarr_size = 0; //TODO: populate this.
-//
-//		gettimeofday(&start_time, (struct timezone *)0);
-//
-//		simple_unfold(&bmorig_spo, maskarr, maskarr_size, ROW);
-//
-//		gettimeofday(&stop_time, (struct timezone *)0);
-//		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-//		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-//		curr_time = en-st;
-//		printf("Time for unfolding (ROW): %f\n", curr_time);
+		unsigned int maskarr_size1 = 0;
+		unsigned char *maskarr1 = get_maskbitarr(&bmorig_spo, ROW, &maskarr_size1);
 
-		/*
-		 * For Preetam: You may want to reset the BitMat before doing unfold
-		 * on another dimension.
-		 */
+
+		BitMat *bmorig_spo_copy = new BitMat;
+		bmorig_spo.clone_to(bmorig_spo_copy);
+
+		gettimeofday(&start_time, (struct timezone *)0);
+
+		simple_unfold(bmorig_spo_copy, maskarr1, maskarr_size1, ROW);
+
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for unfolding (ROW): %f\n", curr_time);
 
 //		bmorig_spo.reset();
 //		wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
-//
-//		gettimeofday(&start_time, (struct timezone *)0);
-//
-//		simple_unfold(&bmorig_spo, maskarr, maskarr_size, COLUMN);
-//
-//		gettimeofday(&stop_time, (struct timezone *)0);
-//		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
-//		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
-//		curr_time = en-st;
-//		printf("Time for unfolding (COLUMN): %f\n", curr_time);
+
+		unsigned int maskarr_size2 = 0;
+		unsigned char *maskarr2 = get_maskbitarr(&bmorig_spo, COLUMN, &maskarr_size2);
+
+		bmorig_spo_copy->freebm();
+		bmorig_spo.clone_to(bmorig_spo_copy);
+
+		gettimeofday(&start_time, (struct timezone *)0);
+
+		simple_unfold(&bmorig_spo, maskarr2, maskarr_size2, COLUMN);
+
+		gettimeofday(&stop_time, (struct timezone *)0);
+		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
+		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
+		curr_time = en-st;
+		printf("Time for unfolding (COLUMN): %f\n", curr_time);
 
 	#if MMAPFILES
 		munmap_all_files();

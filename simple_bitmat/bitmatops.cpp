@@ -6593,3 +6593,57 @@ unsigned int count_intersect_oo(unsigned int bm1, unsigned int bm2)
 	return count_bits_in_row(res, bitmat_spo1.column_bytes);
 }
 
+
+int random_number(int min_num, int max_num)
+{
+    int result = 0, low_num = 0, hi_num = 0;
+
+	if (min_num < max_num) {
+		low_num = min_num;
+		hi_num = max_num + 1; // include max_num in output
+	} else {
+		low_num = max_num + 1; // include max_num in output
+		hi_num = min_num;
+    }
+
+	srand(time(NULL));
+	result = (rand() % (hi_num - low_num)) + low_num;
+	return result;
+}
+
+unsigned char * get_maskbitarr(BitMat *bitmat, int dim, unsigned int *size)
+{
+	unsigned char *maskarr;
+	unsigned int maskarr_size;
+
+	if (dim == ROW) {
+		maskarr = (unsigned char *) malloc(bitmat->row_bytes);
+		maskarr_size = bitmat->row_bytes;
+	} else if (dim == COLUMN) {
+		maskarr = (unsigned char *) malloc(bitmat->column_bytes);
+		maskarr_size = bitmat->column_bytes;
+	} else {
+		cout << "*** ERROR: Dimension not correct" << endl;
+		assert(0);
+	}
+
+	memset(maskarr, 0, maskarr_size);
+
+	for (unsigned int i = 0; i < maskarr_size; i++) {
+		int rdm_num = (random_number(0, 255) & 0x000000ff);
+		memcpy(&maskarr[i], &rdm_num, 1);
+
+		/*
+		 * Remove later
+		 */
+		int check = 0;
+		memcpy(&check, &maskarr[i], 1);
+
+		assert(check == rdm_num);
+	}
+	
+	*size = maskarr_size;
+
+	return maskarr;
+}
+
