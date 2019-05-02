@@ -36,7 +36,7 @@ int main(int args, char **argv)
 	double curr_time;
 	double st, en, prune, init;
 	int c = 0;
-	unsigned int bmnum = 0;
+	unsigned int bmnum = 0, dimension = 0;
 	char qfile[25][124], outfile[25][124];
 	bool loaddata = false, querydata = true, pruning = false;
 	char *dump_file = NULL;
@@ -45,14 +45,13 @@ int main(int args, char **argv)
 
 	if (args < 11) {
 		printf("Copyright 2011, 2012 Medha Atre\n\n");
-//		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -t resultsettype(b: bitvec, h:hashmap)\n");
-		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -b bitmatnum\n\n");
+		printf("Usage: bitmat -l [y/n] -Q [y/n] -f config-file -q query-file -o res-output-file -b bitmatnum -d dimension\n\n");
 		exit (-1);
 	}
 
 	printf("Copyright 2011, 2012 Medha Atre\n\n");
 
-	while((c = getopt(args, argv, "t:l:Q:f:q:o:b:")) != -1) {
+	while((c = getopt(args, argv, "t:l:Q:f:q:o:b:d:")) != -1) {
 		switch (c) {
 			case 'f':
 				parse_config_file(optarg);
@@ -92,15 +91,26 @@ int main(int args, char **argv)
 			case 'b':
 				bmnum = strtoul(optarg, NULL, 10);
 				break;
+			case 'd':
+				if (strcmp(optarg, "SPO")){
+					dimension = SPO_BITMAT;
+				} else if (strcmp(optarg, "OPS")) {
+					dimension = OPS_BITMAT;
+				} else if (strcmp(optarg, "PSO")) {
+					dimension = PSO_BITMAT;
+				} else if (strcmp(optarg, "POS")) {
+					dimension = POS_BITMAT;
+				} else {
+					printf("Usage: bitmat -f config-file -q query-file -o res-output-file -b bitmatnum -d dimension\n");
+					exit (-1);
+				}
 			default:
-				printf("Usage: bitmat -f config-file -q query-file -o res-output-file\n");
+				printf("Usage: bitmat -f config-file -q query-file -o res-output-file -b bitmatnum -d dimension\n");
 				exit (-1);
-
 		}
 	}
 
 	printf("Process id = %d\n", (unsigned)getpid());
-
 
 	if (row_size_bytes != ROW_SIZE_BYTES || gap_size_bytes != GAP_SIZE_BYTES || bm_row_size != BM_ROW_SIZE) {
 		cerr << "**** ERROR: Descrepancy in the row/gap_size_bytes values" << endl;
@@ -124,27 +134,26 @@ int main(int args, char **argv)
 		bmorig_spo.freebm();
 //		clear_rows(&bmorig_spo, true, true, false);
 
-//		BitMat bmorig_ops;
-//		init_bitmat(&bmorig_ops, gnum_objs, gnum_preds, gnum_subs, gnum_comm_so, OPS_BITMAT);
-//		cout << "Loading vertically for OPS bitmat" << endl;
-//		load_data_vertically((char *)config[string("RAWDATAFILE_OPS")].c_str(), triplelist, &bmorig_ops, (char *)config[string("BITMATDUMPFILE_OPS")].c_str(), true, false, true, (char *)config[string("TMP_STORAGE")].c_str());
-//		bmorig_ops.freebm();
-////		clear_rows(&bmorig_ops, true, true, false);
-//
-//		BitMat bmorig_pso;
-//		init_bitmat(&bmorig_pso, gnum_preds, gnum_subs, gnum_objs, gnum_comm_so, PSO_BITMAT);
-//		cout << "Loading vertically for PSO bitmat" << endl;
-//		load_data_vertically((char *)config[string("RAWDATAFILE_PSO")].c_str(), triplelist, &bmorig_pso, (char *)config[string("BITMATDUMPFILE_PSO")].c_str(), true, false, true, NULL);
-//		bmorig_pso.freebm();
-////		clear_rows(&bmorig_pso, true, true, false);
-//
-//		BitMat bmorig_pos;
-//		init_bitmat(&bmorig_pos, gnum_preds, gnum_objs, gnum_subs, gnum_comm_so, POS_BITMAT);
-//		cout << "Loading vertically for POS bitmat" << endl;
-//		load_data_vertically((char *)config[string("RAWDATAFILE_POS")].c_str(), triplelist, &bmorig_pos, (char *)config[string("BITMATDUMPFILE_POS")].c_str(), true, false, true, NULL);
-//		bmorig_pos.freebm();
-////		clear_rows(&bmorig_pos, true, true, false);
+		BitMat bmorig_ops;
+		init_bitmat(&bmorig_ops, gnum_objs, gnum_preds, gnum_subs, gnum_comm_so, OPS_BITMAT);
+		cout << "Loading vertically for OPS bitmat" << endl;
+		load_data_vertically((char *)config[string("RAWDATAFILE_OPS")].c_str(), triplelist, &bmorig_ops, (char *)config[string("BITMATDUMPFILE_OPS")].c_str(), true, false, true, (char *)config[string("TMP_STORAGE")].c_str());
+		bmorig_ops.freebm();
+//		clear_rows(&bmorig_ops, true, true, false);
 
+		BitMat bmorig_pso;
+		init_bitmat(&bmorig_pso, gnum_preds, gnum_subs, gnum_objs, gnum_comm_so, PSO_BITMAT);
+		cout << "Loading vertically for PSO bitmat" << endl;
+		load_data_vertically((char *)config[string("RAWDATAFILE_PSO")].c_str(), triplelist, &bmorig_pso, (char *)config[string("BITMATDUMPFILE_PSO")].c_str(), true, false, true, NULL);
+		bmorig_pso.freebm();
+//		clear_rows(&bmorig_pso, true, true, false);
+
+		BitMat bmorig_pos;
+		init_bitmat(&bmorig_pos, gnum_preds, gnum_objs, gnum_subs, gnum_comm_so, POS_BITMAT);
+		cout << "Loading vertically for POS bitmat" << endl;
+		load_data_vertically((char *)config[string("RAWDATAFILE_POS")].c_str(), triplelist, &bmorig_pos, (char *)config[string("BITMATDUMPFILE_POS")].c_str(), true, false, true, NULL);
+		bmorig_pos.freebm();
+//		clear_rows(&bmorig_pos, true, true, false);
 
 		gettimeofday(&stop_time, (struct timezone *)0);
 		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
@@ -168,16 +177,34 @@ int main(int args, char **argv)
 	#endif
 
 		/*
-		 * For Preetam: bmnum is the edge-label, which in turn decides
+		 * bmnum is the edge-label, which in turn decides
 		 * which adjancency matrix (BitMat) to use. You can change this number,
 		 * and appropriate BitMat will be picked up.
 		 */
-		unsigned int bmnum = 121;
+//		unsigned int bmnum = 121;
+		cout << "Loading SPO BitMat of bmnum " << bmnum << endl;
 		bmorig_spo.reset();
 
 		gettimeofday(&start_time, (struct timezone *)0);
 
 		unsigned int ret = wrapper_load_from_dump_file2(&bmorig_spo, bmnum);
+
+		cout << "Done loading bitmat" << endl;
+
+		/*
+		 * For testing only to be removed later.
+		FILE *fp = fopen(config[string("TMP_STORAGE")].c_str(), "w");
+
+		assert(fp != NULL);
+
+		vector<twople> twoplist;
+
+		fp = list_enctrips_bitmat_new(&bmorig_spo, bmnum, twoplist, fp);
+
+		fclose(fp);
+
+		return 0;
+		 */
 
 		gettimeofday(&stop_time, (struct timezone *)0);
 		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
@@ -185,12 +212,18 @@ int main(int args, char **argv)
 		curr_time = en-st;
 		printf("Time for loading bitmat %d: %f\n", bmnum, curr_time);
 
+		cout << "DEBUG: row_bytes " << bmorig_spo.row_bytes << " column_bytes " << bmorig_spo.column_bytes << endl;
+
 		unsigned int foldarr_size = bmorig_spo.row_bytes;
 		unsigned char *foldarr = (unsigned char *) malloc (foldarr_size);
 
 		gettimeofday(&start_time, (struct timezone *)0);
 
 		simple_fold(&bmorig_spo, ROW, foldarr, foldarr_size);
+
+		for (unsigned int i = 0; i < bmorig_spo.row_bytes; i++) {
+			assert(bmorig_spo.rowfold[i] == foldarr[i]);
+		}
 
 		gettimeofday(&stop_time, (struct timezone *)0);
 		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
@@ -205,13 +238,17 @@ int main(int args, char **argv)
 
 		simple_fold(&bmorig_spo, COLUMN, foldarr2, foldarr2_size);
 
+		for (unsigned int i = 0; i < bmorig_spo.column_bytes; i++) {
+			assert(bmorig_spo.colfold[i] == foldarr2[i]);
+		}
+
 		gettimeofday(&stop_time, (struct timezone *)0);
 		en = stop_time.tv_sec + (stop_time.tv_usec/MICROSEC);
 		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
 		curr_time = en-st;
 		printf("Time for folding (COLUMN): %f\n", curr_time);
 
-
+/*
 		unsigned int maskarr_size1 = 0;
 		unsigned char *maskarr1 = get_maskbitarr(&bmorig_spo, ROW, &maskarr_size1);
 
@@ -247,7 +284,7 @@ int main(int args, char **argv)
 		st = start_time.tv_sec + (start_time.tv_usec/MICROSEC);
 		curr_time = en-st;
 		printf("Time for unfolding (COLUMN): %f\n", curr_time);
-
+*/
 	#if MMAPFILES
 		munmap_all_files();
 	#endif

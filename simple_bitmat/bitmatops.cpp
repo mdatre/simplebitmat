@@ -331,6 +331,7 @@ void dgap_uncompress(unsigned char *in, unsigned int insize, unsigned char *out,
 	flag = in[0] & 0x01;
 	unsigned char format = in[0] & 0x02;
 
+//	cout << "DEBUG: " << tmpcnt << " " << insize <<  " " << total_cnt << " " << outsize << endl;
 	while (cnt < total_cnt) {
 		memcpy(&tmpcnt, &in[cnt*GAP_SIZE_BYTES+1], GAP_SIZE_BYTES);
 //		printf("Inside while loop %u\n", cnt);
@@ -1119,7 +1120,7 @@ FILE* map_to_row_wo_dgap_vertical(BitMat *bitmat, unsigned int spos, unsigned in
 		total_setbits = count_triples_in_row(&grow[ROW_SIZE_BYTES], size);
 		total_gaps = count_dgaps_in_row(&grow[ROW_SIZE_BYTES], size);
 
-		if (total_gaps >= 0xffff || total_setbits >= 0xffff) {
+		if (total_gaps >= pow(2, 8*BM_ROW_SIZE) || total_setbits >= pow(2, 8*BM_ROW_SIZE)) {
 			cout << "total_gaps " << total_gaps << " total_setbits " << total_setbits << endl;
 			assert(0);
 		}
@@ -1725,8 +1726,9 @@ unsigned long count_triples_in_bitmat(BitMat *bitmat)
 }
 
 void threaded_simple_col_fold(std::list<struct row>::iterator it_begin,
-		std::list<struct row>::iterator it_end, unsigned char *foldarr, unsigned int foldarr_size)
+		std::list<struct row>::iterator it_end, unsigned char *foldarr, unsigned int foldarr_size, unsigned short threadnum)
 {
+	cout << "threaded_simple_col_fold threadnum " << threadnum << endl;
 	for (std::list<struct row>::iterator it = it_begin; it != it_end; it++) {
 		unsigned char *data = (*it).data;
 //			unsigned int rowsize = 0;
@@ -1737,8 +1739,10 @@ void threaded_simple_col_fold(std::list<struct row>::iterator it_begin,
 }
 
 void threaded_simple_row_fold(std::list<struct row>::iterator it_begin,
-		std::list<struct row>::iterator it_end, unsigned char *foldarr, unsigned int foldarr_size)
+		std::list<struct row>::iterator it_end, unsigned char *foldarr, unsigned int foldarr_size, unsigned short threadnum)
 {
+	cout << "threaded_simple_row_fold thread_num " << threadnum << endl;
+
 	for (std::list<struct row>::iterator it = it_begin; it != it_end; it++) {
 		unsigned int rowbit = (*it).rowid - 1;
 		assert(rowbit/8 < foldarr_size);
@@ -1789,7 +1793,7 @@ void simple_fold(BitMat *bitmat, int ret_dimension, unsigned char *foldarr, unsi
 				remaining--;
 			}
 
-			myThreads[i] = thread(threaded_simple_row_fold, it_begin, it_end, foldarr, foldarr_size);
+			myThreads[i] = thread(threaded_simple_row_fold, it_begin, it_end, foldarr, foldarr_size, i);
 			it = it_end;
 		}
 		for (unsigned short i = 0; i < total_thr; i++) {
@@ -1821,7 +1825,7 @@ void simple_fold(BitMat *bitmat, int ret_dimension, unsigned char *foldarr, unsi
 			remaining -= curr_alloc;
 			local_foldarr[i] = (unsigned char *) malloc (foldarr_size);
 			memset(local_foldarr[i], 0x00, foldarr_size);
-			myThreads[i] = thread(threaded_simple_col_fold, it_begin, it_end, local_foldarr[i], foldarr_size);
+			myThreads[i] = thread(threaded_simple_col_fold, it_begin, it_end, local_foldarr[i], foldarr_size, i);
 			it = it_end;
 		}
 
@@ -3099,8 +3103,9 @@ FILE * print_triples_to_file(unsigned int rownum, unsigned int bmnum, unsigned i
 }
 
 /////////////////////////////////////////////////////////
-void list_enctrips_bitmat_new(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile)
+FILE * list_enctrips_bitmat_new(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile)
 {
+//	cout << "DEBUG inside list_enctrips_bitmat_new" << endl;
 #if USE_MORE_BYTES
 	unsigned long opos = 0;
 	unsigned long tmpcnt = 0, bitcnt = 0;
@@ -3159,9 +3164,11 @@ void list_enctrips_bitmat_new(BitMat *bitmat, unsigned int bmnum, vector<twople>
 			flag = !flag;
 		}
 	}
+
+	return outfile;
 }
 /////////////////////////////
-void list_enctrips_bitmat2(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile)
+FILE * list_enctrips_bitmat2(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile)
 {
 #if USE_MORE_BYTES
 	unsigned long opos = 0;
@@ -3226,6 +3233,7 @@ void list_enctrips_bitmat2(BitMat *bitmat, unsigned int bmnum, vector<twople> &t
 
 	}
 
+	return outfile;
 }
 
 unsigned long get_size_of_bitmat(int dimension, unsigned int node)
@@ -3681,21 +3689,60 @@ void list_all_data(int dimension, unsigned int node, char *filename)
 //}
 ////////////////////////////////////////////////////////////
 
-void dump_out_data(FILE *fdump_fp, BitMat *bitmat, char *fname_tmp)
+void print_triples_in_comp_arr(unsigned char *data, unsigned int size)
+{
+	unsigned int cnt = 0, total_cnt = 0, bitpos = 0, tmpcnt = 0, bitcnt = 0;
+	bool flag;
+//	unsigned char b;
+
+	total_cnt = (size-1)/GAP_SIZE_BYTES;
+	flag = data[0] & 0x01;
+	unsigned char format = data[0] & 0x02;
+
+	cout << "**** print_triples_in_comp_arr *** size " << size;
+	printf(" format %x\n", format);
+
+	while (cnt < total_cnt) {
+		memcpy(&tmpcnt, &data[cnt*GAP_SIZE_BYTES+1], GAP_SIZE_BYTES);
+//		printf("Inside while loop %u\n", cnt);
+		if (format == 0x02) {
+			cout << tmpcnt << endl;//" ";
+		} else {
+			if (flag) {
+				for (bitpos = bitcnt; bitpos < bitcnt+tmpcnt; bitpos++) {
+					cout << bitpos + 1 << endl;// " ";
+//					out[bitpos/8] |= (0x80 >> (bitpos % 8));
+				}
+			}
+		}
+		cnt++;
+		flag = !flag;
+		bitcnt += tmpcnt;
+	}
+	cout << endl;
+}
+
+FILE * dump_out_data(FILE *fdump_fp, BitMat *bitmat, char *fname_tmp, bool debug)
 {
 //	int fd = 0;
 	unsigned int i = 0;
 //	unsigned int size = 0;
 
+//	cout << "Inside dump_out_data, debug " << debug << endl;
+
 	if (bitmat->num_triples != 0) {
 //		write(fd, &bitmat->num_triples, sizeof(unsigned int));
 //		cout << "Num triples - " << bitmat->num_triples << endl;;
-		fwrite(&bitmat->num_triples, sizeof(unsigned long), 1, fdump_fp);
+		fwrite(&bitmat->num_triples, sizeof(unsigned int), 1, fdump_fp);
 		gtotal_size += sizeof(unsigned int);
 	}
 	if (bitmat->rowfold != NULL && bitmat->colfold != NULL) {
 		if (bitmat->dimension == PSO_BITMAT || bitmat->dimension == POS_BITMAT || comp_folded_arr) {
 //			write(fd, comp_rowfold, comp_rowfold_size + ROW_SIZE_BYTES);
+			if (debug) {
+				cout << "DEBUG comp_rowfold_size " << comp_rowfold_size << endl; 
+				print_triples_in_comp_arr(comp_rowfold + ROW_SIZE_BYTES, comp_rowfold_size);
+			}
 			fwrite(comp_rowfold, comp_rowfold_size + ROW_SIZE_BYTES, 1, fdump_fp);
 			gtotal_size += comp_rowfold_size + ROW_SIZE_BYTES;
 		} else {
@@ -3743,6 +3790,8 @@ void dump_out_data(FILE *fdump_fp, BitMat *bitmat, char *fname_tmp)
 			gtotal_size += (TOTAL_ROWSIZE(sz) + BM_ROW_SIZE);
 		}
 	}
+
+	return fdump_fp;
 
 //	printf("dump_out_data: Total bytes to file %u #triples %u\n", gtotal_size, bitmat->num_triples);
 
@@ -3987,16 +4036,16 @@ void load_data_vertically(char *file, vector<struct twople> &twoplelist, BitMat 
 //								}
 								memcpy(comp_rowfold, &comp_rowfold_size, ROW_SIZE_BYTES);
 							}
-							if (bitmat->dimension == SPO_BITMAT || bitmat->dimension == OPS_BITMAT) {
-								cout << "load_data_vertically: Dumping data for BM " << pprev << endl;
-							}
+//							if (bitmat->dimension == SPO_BITMAT || bitmat->dimension == OPS_BITMAT) {
+//								cout << "load_data_vertically: Dumping data for BM " << pprev << endl;
+//							}
 
 							if (tmpdump) {
 								fclose(tmpdump);
 								tmpdump = NULL;
 							}
 
-							dump_out_data(fdump_fp, bitmat, (char *)config[string("TMP_STORAGE")].c_str());
+							fdump_fp = dump_out_data(fdump_fp, bitmat, (char *)config[string("TMP_STORAGE")].c_str(), 0);
 
 							if (ppos - 1 != pprev) {
 								unsigned long tmpval = 0;
@@ -4069,7 +4118,7 @@ void load_data_vertically(char *file, vector<struct twople> &twoplelist, BitMat 
 				fclose(tmpdump);
 				tmpdump = NULL;
 			}
-			dump_out_data(fdump_fp, bitmat, (char *)config[string("TMP_STORAGE")].c_str());
+			fdump_fp = dump_out_data(fdump_fp, bitmat, (char *)config[string("TMP_STORAGE")].c_str(), 0);
 
 //			if ( (pcnt % 1048576) == 0)
 //				cout << "**** Done with BM num " << pcnt << endl;
@@ -4508,12 +4557,12 @@ unsigned int wrapper_load_from_dump_file2(BitMat *bitmat, unsigned int bmnum)
 	fpos = mmap_table[string(dumpfile)];
 	fpos += get_offset(dumpfile, bmnum);
 #else
-	fd = open(fname_dump, O_RDONLY);
+	fd = open(dumpfile, O_RDONLY);
 	if (fd < 0) {
-		printf("*** ERROR opening dump file %s\n", fname_dump);
+		printf("*** ERROR opening dump file %s\n", dumpfile);
 		assert(0);
 	}
-	unsigned long offset = get_offset(fname_dump, bmnum);
+	unsigned long offset = get_offset(dumpfile, bmnum);
 	if (offset > 0) {
 		lseek(fd, offset, SEEK_CUR);
 	}
@@ -4522,11 +4571,12 @@ unsigned int wrapper_load_from_dump_file2(BitMat *bitmat, unsigned int bmnum)
 	assert((fd == 0) ^ (NULL == fpos));
 
 #if MMAPFILES
-	//		memcpy(&bitmat->num_triples, fpos, sizeof(unsigned int));
+	memcpy(&bitmat->num_triples, fpos, sizeof(unsigned int));
 	fpos += sizeof(unsigned int);
 #else
 	read(fd, &bitmat->num_triples, sizeof(unsigned int));
 #endif
+//	cout << "DEBUG num_triples " << bitmat->num_triples << endl;
 	if (bitmat->num_triples == 0) {
 		cout << "wrapper_load_from_dump_file2: 0 results" << endl;
 		return bitmat->num_triples;
@@ -4552,6 +4602,9 @@ unsigned int wrapper_load_from_dump_file2(BitMat *bitmat, unsigned int bmnum)
 		read(fd, &comp_arr_size, ROW_SIZE_BYTES);
 #endif
 //			total_size += ROW_SIZE_BYTES;
+
+//		cout << "DEBUG " << comp_arr_size << endl;
+
 		unsigned char *comp_arr = (unsigned char *) malloc (comp_arr_size * sizeof(unsigned char));
 #if MMAPFILES
 		memcpy(comp_arr, fpos, comp_arr_size);

@@ -629,9 +629,9 @@ bool populate_all_tp_bitmats();
 //void match_query_graph_new(FILE **outfile, FILE **intfile, FILE **intfile_preds, struct node **bfsarr, int sidx, int eidx, char *null_pad_str, bool bestm,
 //		map<struct node *, struct triple> &q_to_gr_node_map, map<struct node *, struct triple> &copy_of_resmap);
 
-void list_enctrips_bitmat_new(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile);
+FILE * list_enctrips_bitmat_new(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile);
 
-void list_enctrips_bitmat2(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile);
+FILE * list_enctrips_bitmat2(BitMat *bitmat, unsigned int bmnum, vector<twople> &twoplist, FILE *outfile);
 
 void load_mappings(char *subjfile, char *predfile, char *objfile);
 
